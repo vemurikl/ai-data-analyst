@@ -31,12 +31,112 @@ SUPPLY_CHAIN_COMPANIES = [
     "Toyota", "Honeywell", "Siemens", "Bosch", "3M"
 ]
 
-SUPPLY_CHAIN_KPIS = [
-    "lead time", "fill rate", "OTIF (On Time In Full)", "inventory turns",
-    "days of supply", "shortage rate", "safety stock", "reorder point",
-    "supplier scorecard", "demand forecast accuracy", "MOQ", "EOQ",
-    "cycle time", "defect rate", "on-time delivery", "cost of goods sold",
-    "procurement spend", "supplier concentration risk"
+# KPIs organized by the 6 supply chain modules
+MODULE_KPIS: dict[str, dict] = {
+    "Inventory": {
+        "icon": "📦",
+        "kpis": [
+            "inventory turns", "days of supply (DOS)", "safety stock level",
+            "reorder point (ROP)", "economic order quantity (EOQ)",
+            "shortage / stockout rate", "dead stock %", "aging inventory",
+            "ABC classification", "cycle count accuracy", "inventory carrying cost",
+            "shrinkage rate", "min/max levels",
+        ],
+        "questions": [
+            "What is the inventory turnover by SKU or category?",
+            "Which items are overstocked or at risk of stockout?",
+            "Show aging inventory — items with no movement in 90+ days.",
+            "What is the days of supply for each product group?",
+        ],
+    },
+    "Supplier Performance": {
+        "icon": "🤝",
+        "kpis": [
+            "OTIF (On Time In Full)", "supplier scorecard", "defect rate (PPM)",
+            "on-time delivery %", "supplier concentration risk",
+            "quality escape rate", "corrective action (CAPA) rate",
+            "delivery performance %", "response time SLA compliance",
+            "supplier diversification index", "approved vendor list (AVL) coverage",
+        ],
+        "questions": [
+            "Which suppliers have the worst OTIF performance?",
+            "Rank suppliers by defect rate over the last quarter.",
+            "Which suppliers represent more than 20% of our spend (concentration risk)?",
+            "Show on-time delivery trend by supplier.",
+        ],
+    },
+    "Procurement": {
+        "icon": "🏭",
+        "kpis": [
+            "procurement spend", "purchase price variance (PPV)",
+            "PO cycle time", "contract compliance %", "maverick spend %",
+            "spend under management", "cost avoidance", "cost savings %",
+            "supplier payment terms (DPO)", "contract coverage %",
+            "requisition-to-PO cycle time", "MOQ (minimum order quantity)",
+        ],
+        "questions": [
+            "What is the total procurement spend by category or supplier?",
+            "Where is our purchase price variance highest?",
+            "How much spend is outside approved contracts (maverick spend)?",
+            "What is the average PO cycle time by buyer or category?",
+        ],
+    },
+    "Demand Planning": {
+        "icon": "📈",
+        "kpis": [
+            "forecast accuracy %", "MAPE (Mean Absolute Percentage Error)",
+            "forecast bias", "MAD (Mean Absolute Deviation)",
+            "demand variability (CV)", "service level %",
+            "fill rate vs forecast", "new product forecast accuracy",
+            "statistical forecast vs actuals", "error by SKU / region",
+            "demand sensing signal strength",
+        ],
+        "questions": [
+            "What is our forecast accuracy (MAPE) by product family?",
+            "Which SKUs have the highest forecast bias?",
+            "Show demand variability and coefficient of variation by category.",
+            "Where is the gap between forecasted and actual demand largest?",
+        ],
+    },
+    "Logistics": {
+        "icon": "🚚",
+        "kpis": [
+            "lead time", "transit time", "freight cost per unit",
+            "carrier on-time performance %", "freight cost as % of revenue",
+            "mode split (air / ocean / ground / LTL / FTL)",
+            "delivery exception rate", "damage rate in transit",
+            "customs clearance time", "last-mile delivery performance",
+            "freight invoice accuracy", "carbon emissions per shipment",
+        ],
+        "questions": [
+            "Which carriers have the worst on-time delivery performance?",
+            "What is the average freight cost per unit by lane or carrier?",
+            "Show transit time trend — are lead times improving or worsening?",
+            "What percentage of shipments travel by air vs ocean vs ground?",
+        ],
+    },
+    "Warehouse Operations": {
+        "icon": "🏪",
+        "kpis": [
+            "pick accuracy %", "order fulfillment cycle time",
+            "dock-to-stock time", "storage utilization %",
+            "put-away time", "shipping accuracy %", "receiving accuracy %",
+            "cases / lines per hour (labor efficiency)", "cost per order",
+            "returns processing time", "inventory accuracy %",
+            "perfect order rate", "on-time shipment %",
+        ],
+        "questions": [
+            "What is our pick accuracy rate and where are errors concentrated?",
+            "How does storage utilization vary across warehouse locations?",
+            "What is the average dock-to-stock time by product type?",
+            "Show order fulfillment cycle time trend by week or shift.",
+        ],
+    },
+}
+
+# Flat list for prompts — all KPIs across all modules
+SUPPLY_CHAIN_KPIS: list[str] = [
+    kpi for module in MODULE_KPIS.values() for kpi in module["kpis"]
 ]
 
 
@@ -355,9 +455,12 @@ def execute_code_safely(code: str, df: pd.DataFrame) -> dict[str, Any]:
 
 # ─── Insight Engine ───────────────────────────────────────────────────────────
 
-_INSIGHT_SYSTEM = """You are a senior supply chain analyst interpreting data findings for operations leaders.
+_INSIGHT_SYSTEM = """You are a senior supply chain analyst covering all six operational modules:
+📦 Inventory · 🤝 Supplier Performance · 🏭 Procurement · 📈 Demand Planning · 🚚 Logistics · 🏪 Warehouse Operations.
+
 Rules:
-- Use plain English. Reference supply chain concepts (lead time, OTIF, fill rate, etc.) where relevant.
+- Use plain English. Reference the correct module's KPIs (e.g. OTIF/defect rate for Supplier Performance,
+  MAPE/forecast bias for Demand Planning, pick accuracy/dock-to-stock for Warehouse Ops, freight cost/transit time for Logistics).
 - Be specific — use exact numbers from the results.
 - Focus on operational impact: risk, cost, delivery performance, supplier reliability.
 - Keep each insight to 1-2 sentences.
@@ -583,30 +686,41 @@ def detect_industry(df: pd.DataFrame) -> dict:
     columns_info = ", ".join([f"{col} ({df[col].dtype})" for col in df.columns])
     sample_values = {col: df[col].dropna().head(3).tolist() for col in list(df.columns)[:5]}
 
-    prompt = f"""Identify the industry/domain of this dataset.
-Columns: {columns_info}
+    # Build module hint for the prompt
+    module_hints = "\n".join([
+        f"- {m} ({info['icon']}): look for columns related to {', '.join(info['kpis'][:4])}"
+        for m, info in MODULE_KPIS.items()
+    ])
+
+    prompt = f"""Identify which supply chain module this dataset belongs to.
+
+The six modules are:
+{module_hints}
+
+Dataset columns: {columns_info}
 Sample values: {json.dumps(sample_values, default=str)}
 
-This dataset may come from a supply chain company (e.g. Jabil, Nvidia, TSMC, Foxconn, Flex).
-Look for clues: supplier names, part numbers, lead times, order quantities, inventory levels, BOM data.
+Pick the single best-matching module as the subdomain.
+Return 3 key metrics from that module and 4 typical questions a user would ask.
 
 Respond ONLY with valid JSON (no markdown):
 {{
     "industry": "supply chain",
-    "subdomain": "e.g. contract manufacturing / semiconductors / procurement",
+    "subdomain": "Inventory | Supplier Performance | Procurement | Demand Planning | Logistics | Warehouse Operations",
     "confidence": "high|medium|low",
     "reasoning": "one sentence explaining your detection",
     "key_metrics": ["metric 1", "metric 2", "metric 3"],
     "typical_questions": [
-        "Which suppliers have the longest lead times?",
-        "What is the fill rate by product category?",
-        "Show inventory aging by supplier."
+        "question 1",
+        "question 2",
+        "question 3",
+        "question 4"
     ]
 }}"""
 
     try:
         response = client.messages.create(
-            model=MODEL, max_tokens=600,
+            model=MODEL, max_tokens=700,
             messages=[{"role": "user", "content": prompt}]
         )
         raw = re.sub(r"```json|```", "", response.content[0].text).strip()
@@ -616,14 +730,15 @@ Respond ONLY with valid JSON (no markdown):
             "success": True,
             "data": {
                 "industry": "supply chain",
-                "subdomain": "operations",
+                "subdomain": "Inventory",
                 "confidence": "low",
                 "reasoning": "Default supply chain context.",
-                "key_metrics": ["lead time", "fill rate", "OTIF"],
+                "key_metrics": ["inventory turns", "days of supply", "shortage rate"],
                 "typical_questions": [
-                    "Which suppliers have the longest lead times?",
-                    "What is our overall fill rate?",
-                    "Show me inventory levels by category."
+                    "What is the inventory turnover by SKU or category?",
+                    "Which items are overstocked or at risk of stockout?",
+                    "Show aging inventory — items with no movement in 90+ days.",
+                    "What is the days of supply for each product group?",
                 ]
             }
         }
@@ -634,21 +749,32 @@ def explain_result(question: str, result, df: pd.DataFrame, industry: str = "sup
     result_str = _format_result(result)
     dataset_context = f"{df.shape[0]} rows x {df.shape[1]} cols. Columns: {list(df.columns)}"
 
+    # Find the closest module match from the subdomain
+    matched_module = next(
+        (m for m in MODULE_KPIS if m.lower() in industry.lower()), None
+    )
+    module_kpi_hint = (
+        f"Relevant KPIs for {matched_module}: {', '.join(MODULE_KPIS[matched_module]['kpis'][:6])}"
+        if matched_module else
+        "Cover inventory, logistics, supplier performance, procurement, demand planning, and warehouse ops as relevant."
+    )
+
     prompt = f"""You are a senior supply chain analyst explaining findings to an operations manager.
 
-Industry: {industry}
+Module context: {industry}
+{module_kpi_hint}
 Dataset: {dataset_context}
 Question: {question}
 Result: {result_str}
 
 Respond ONLY with valid JSON (no markdown):
 {{
-    "explanation": "2-3 sentence explanation with specific numbers and supply chain context",
+    "explanation": "2-3 sentence explanation with specific numbers and module-relevant KPI context",
     "confidence": "high|medium|low",
     "confidence_reason": "one sentence",
     "limitations": ["limitation 1", "limitation 2"],
     "next_steps": ["next analysis 1", "next analysis 2"],
-    "industry_context": "one sentence connecting finding to supply chain operations",
+    "industry_context": "one sentence connecting this finding to the operational module",
     "key_number": "the single most important number",
     "sentiment": "positive|negative|neutral|warning"
 }}"""
@@ -792,10 +918,24 @@ class SupplyChainOrchestrator:
         industry = self.industry_info.get("industry", "supply chain")
         self.memory.add_user_message(question)
 
+        subdomain = self.industry_info.get("subdomain", "")
+        matched_module = next(
+            (m for m in MODULE_KPIS if m.lower() in subdomain.lower()), None
+        )
+        if matched_module:
+            kpi_context = (
+                f"Primary module: {matched_module} {MODULE_KPIS[matched_module]['icon']}\n"
+                f"Key KPIs: {', '.join(MODULE_KPIS[matched_module]['kpis'])}"
+            )
+        else:
+            kpi_context = "All modules in scope: " + " | ".join(
+                f"{info['icon']} {m}" for m, info in MODULE_KPIS.items()
+            )
+
         react_result = run_react_agent(
             question=question, df=df,
-            system_context=f"""Industry: {industry}
-Supply chain KPIs to consider: {', '.join(SUPPLY_CHAIN_KPIS[:8])}
+            system_context=f"""Industry: {industry} — {subdomain}
+{kpi_context}
 Previous conversation:
 {self.memory.get_context_summary()}"""
         )

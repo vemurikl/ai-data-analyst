@@ -13,8 +13,8 @@ from agent.supply_chain_agent import SupplyChainOrchestrator
 load_dotenv()
 
 st.set_page_config(
-    page_title="SupplyIQ",
-    page_icon="⛓️",
+    page_title="Ceaser.ai",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -182,8 +182,8 @@ with st.sidebar:
     st.markdown("""
     <div style="padding:20px 20px 14px;border-bottom:1px solid rgba(30,41,59,0.8);">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-        <div style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;box-shadow:0 3px 10px rgba(29,78,216,0.4);">⛓️</div>
-        <span style="font-size:1.1rem;font-weight:700;color:#e2e8f0;letter-spacing:-0.02em;">SupplyIQ</span>
+        <div style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;box-shadow:0 3px 10px rgba(29,78,216,0.4);">⚡</div>
+        <span style="font-size:1.1rem;font-weight:700;color:#e2e8f0;letter-spacing:-0.02em;">Ceaser.ai</span>
       </div>
       <div style="font-size:0.65rem;color:#334155;text-transform:uppercase;letter-spacing:0.1em;padding-left:40px;">AI Supply Chain Analyst</div>
     </div>
@@ -351,7 +351,7 @@ with st.sidebar:
                 st.download_button(
                     "📥 Export",
                     data=orch.memory.to_json(),
-                    file_name="supplyiq_chat.json",
+                    file_name="ceaser_chat.json",
                     mime="application/json",
                     use_container_width=True,
                 )
@@ -362,7 +362,7 @@ with st.sidebar:
 if not orch.is_initialized:
     st.markdown("""
     <div style="text-align:center;padding:40px 0 20px;">
-      <div style="font-size:0.7rem;color:#334155;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:16px;">Supply Chain Intelligence Platform</div>
+      <div style="font-size:0.7rem;color:#334155;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:16px;">Supply Chain Intelligence · ceaser.ai</div>
       <div style="font-size:2.2rem;font-weight:800;color:#e2e8f0;letter-spacing:-0.03em;line-height:1.2;margin-bottom:10px;">
         Ask your data anything.<br>
         <span style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Get supply chain answers.</span>
