@@ -1,0 +1,15 @@
+[theme]
+# Slate grey & orange professional theme
+primaryColor = "#E8640C"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F1EFE8"
+textColor = "#2C2C2A"
+font = "sans serif"
+ 
+[server]
+headless = true
+enableCORS = false
+maxUploadSize = 5120
+ 
+[browser]
+gatherUsageStats = false
