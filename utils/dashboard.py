@@ -12,18 +12,18 @@ from plotly.subplots import make_subplots
 
 _DARK = dict(
     paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(15,23,42,0.4)",
-    font_color="#94a3b8",
-    title_font_color="#e2e8f0",
+    plot_bgcolor="rgba(248,250,252,0.8)",
+    font_color="#64748b",
+    title_font_color="#0f172a",
     title_font_size=14,
     margin=dict(l=16, r=16, t=40, b=16),
-    colorway=["#3b82f6", "#22c55e", "#a78bfa", "#fbbf24", "#f87171", "#06b6d4"],
+    colorway=["#2563eb", "#16a34a", "#7c3aed", "#d97706", "#dc2626", "#0891b2"],
 )
 
 _AXIS = dict(
-    gridcolor="rgba(51,65,85,0.4)",
-    linecolor="rgba(51,65,85,0.4)",
-    tickfont_color="#64748b",
+    gridcolor="rgba(226,232,240,0.8)",
+    linecolor="rgba(226,232,240,0.8)",
+    tickfont_color="#94a3b8",
 )
 
 
