@@ -400,16 +400,22 @@ class DataCleaningAgent:
 # ─── Code Executor ────────────────────────────────────────────────────────────
 
 def _safe_import(name, *args, **kwargs):
-    allowed = {"pandas", "numpy", "plotly", "plotly.express", "plotly.graph_objects"}
+    allowed = {
+        "pandas", "numpy",
+        "plotly", "plotly.express", "plotly.graph_objects", "plotly.subplots",
+    }
     if name not in allowed:
         raise ImportError(f"Import of '{name}' is not allowed in the sandbox.")
     return __import__(name, *args, **kwargs)
 
 
+from plotly.subplots import make_subplots as _make_subplots
+
 _SAFE_GLOBALS: dict = {
     "pd": pd, "pandas": pd,
     "np": np, "numpy": np,
     "px": px, "go": go,
+    "make_subplots": _make_subplots,
     "__builtins__": {
         "__import__": _safe_import,
         "int": int, "float": float, "str": str,

@@ -207,6 +207,8 @@ if "df_display"     not in st.session_state:
     st.session_state.df_display     = None
 if "sidebar_wide"   not in st.session_state:
     st.session_state.sidebar_wide   = False
+if "show_scorecard" not in st.session_state:
+    st.session_state.show_scorecard = False
 
 orch = st.session_state.orchestrator
 
@@ -362,6 +364,11 @@ with st.sidebar:
             with c2:
                 st.download_button("📥 Export", data=orch.memory.to_json(), file_name="caeser_chat.json", mime="application/json", use_container_width=True)
 
+            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+            if st.button("📋 Generate Manager Scorecard", use_container_width=True):
+                st.session_state["show_scorecard"] = True
+                st.rerun()
+
 # ── LANDING PAGE ───────────────────────────────────────────────────────────────
 if not orch.is_initialized:
     # Hero
@@ -446,6 +453,100 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# ── Manager Scorecard ─────────────────────────────────────────────────────────
+if st.session_state.get("show_scorecard") and st.session_state.responses:
+    st.markdown("""
+    <div style="background:#fff;border:1px solid rgba(226,232,240,0.9);border-radius:16px;padding:24px 28px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.07);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div>
+          <div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:4px;">Executive Summary</div>
+          <div style="font-size:1.3rem;font-weight:800;color:#0f172a;letter-spacing:-0.02em;">Manager Scorecard</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);border-radius:10px;padding:8px 16px;">
+          <span style="color:#fff;font-size:0.8rem;font-weight:600;">⚡ Caeser.ai</span>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # KPI row from successful responses
+    kpi_cards = []
+    for resp in st.session_state.responses:
+        if resp.get("success") and resp.get("explanation"):
+            exp = resp["explanation"]
+            kpi_cards.append({
+                "q": resp["question"],
+                "kpi": exp.get("key_number", "—"),
+                "conf": exp.get("confidence", "medium"),
+                "sentiment": exp.get("sentiment", "neutral"),
+                "summary": exp.get("explanation", ""),
+                "next": exp.get("next_steps", []),
+            })
+
+    if kpi_cards:
+        s_colors = {"positive": "#16a34a", "negative": "#dc2626", "warning": "#d97706", "neutral": "#2563eb"}
+        s_bg     = {"positive": "#f0fdf4", "negative": "#fef2f2", "warning": "#fffbeb", "neutral": "#eff6ff"}
+        s_border = {"positive": "#bbf7d0", "negative": "#fecaca", "warning": "#fde68a", "neutral": "#bfdbfe"}
+        s_icons  = {"positive": "▲", "negative": "▼", "warning": "⚠", "neutral": "●"}
+
+        # KPI metric cards
+        cols = st.columns(min(len(kpi_cards), 4))
+        for i, card in enumerate(kpi_cards[:4]):
+            sent = card["sentiment"]
+            with cols[i]:
+                st.markdown(f"""
+                <div style="background:{s_bg.get(sent,'#eff6ff')};border:1px solid {s_border.get(sent,'#bfdbfe')};border-top:3px solid {s_colors.get(sent,'#2563eb')};border-radius:14px;padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                  <div style="font-size:0.58rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">{card['q'][:40]}{'…' if len(card['q'])>40 else ''}</div>
+                  <div style="font-size:2rem;font-weight:800;color:{s_colors.get(sent,'#2563eb')};line-height:1;margin-bottom:6px;">{card['kpi']}</div>
+                  <div style="font-size:0.68rem;color:{s_colors.get(sent,'#2563eb')};font-weight:500;">{s_icons.get(sent,'●')} {sent.title()} · {card['conf'].title()} confidence</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+
+        # Findings summary
+        st.markdown("""
+        <div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:10px;">Key Findings</div>
+        """, unsafe_allow_html=True)
+        for i, card in enumerate(kpi_cards):
+            sent = card["sentiment"]
+            st.markdown(f"""
+            <div style="display:flex;gap:14px;align-items:flex-start;background:#f8fafc;border:1px solid rgba(226,232,240,0.9);border-left:3px solid {s_colors.get(sent,'#2563eb')};border-radius:10px;padding:12px 16px;margin-bottom:8px;">
+              <div style="background:{s_bg.get(sent,'#eff6ff')};color:{s_colors.get(sent,'#2563eb')};border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;flex-shrink:0;">{i+1}</div>
+              <div>
+                <div style="font-size:0.78rem;font-weight:600;color:#0f172a;margin-bottom:3px;">{card['q']}</div>
+                <div style="font-size:0.775rem;color:#475569;line-height:1.55;">{card['summary']}</div>
+                {f'<div style="font-size:0.72rem;color:#94a3b8;margin-top:5px;">→ Next: {card["next"][0]}</div>' if card["next"] else ''}
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Export scorecard as HTML
+        scorecard_html = f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
+        <title>Caeser.ai Manager Scorecard</title>
+        <style>body{{font-family:system-ui,sans-serif;background:#f8fafc;padding:40px;color:#0f172a;}}
+        h1{{font-size:1.8rem;font-weight:800;}}h2{{font-size:1rem;color:#64748b;font-weight:500;}}
+        .card{{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin:8px 0;}}
+        .kpi{{font-size:2rem;font-weight:800;color:#1d4ed8;}}</style></head>
+        <body><h2>Executive Summary · Caeser.ai</h2><h1>Manager Scorecard</h1>
+        {''.join([f'<div class="card"><div style="font-size:0.75rem;color:#64748b;">{c["q"]}</div><div class="kpi">{c["kpi"]}</div><p>{c["summary"]}</p></div>' for c in kpi_cards])}
+        </body></html>"""
+
+        st.download_button(
+            "⬇️ Download Scorecard (HTML)",
+            data=scorecard_html,
+            file_name="caeser_scorecard.html",
+            mime="text/html",
+            use_container_width=False,
+        )
+
+    if st.button("✕ Close Scorecard", key="close_scorecard"):
+        st.session_state["show_scorecard"] = False
+        st.rerun()
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊  Data Explorer", "🎯  Business Dashboard", "🔬  Quality Dashboard", "🧹  Cleaning Report", "Industry & KPIs"])
 
 with tab1:
